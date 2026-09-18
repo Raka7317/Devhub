@@ -2,7 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.project import ProjectSimpleResponse
 from app.core.security import hash_password
-from app.api.deps import get_db
+from fastapi import BackgroundTasks
+
+
+from app.core.background_tasks import (
+    send_welcome_email,
+    create_audit_log
+)
+
+from fastapi import BackgroundTasks
+from app.api.deps import (
+    get_db,
+    get_current_user,
+    require_admin
+)
 from app.models.user import User
 from app.schemas.user import (
     UserCreate,
@@ -16,10 +29,10 @@ router = APIRouter(
     tags=["Users"]
 )
 
-
 @router.post("/", response_model=UserResponse)
 def create_user(
     user: UserCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     existing_user = db.query(User).filter(
@@ -36,14 +49,28 @@ def create_user(
         name=user.name,
         email=user.email,
         age=user.age,
-        password_hash=hash_password(user.password)
+        password_hash=hash_password(user.password),
+        role="user"
     )
 
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
+    background_tasks.add_task(
+        send_welcome_email,
+        new_user.email
+    )
+
+    background_tasks.add_task(
+        create_audit_log,
+        new_user.id,
+        "USER_REGISTERED"
+    )
+
     return new_user
+
+
 
 @router.get("/", response_model=list[UserResponse])
 def get_users(
@@ -53,6 +80,15 @@ def get_users(
 
     return users
 
+@router.get(
+    "/admin/users",
+    response_model=list[UserResponse]
+)
+def get_all_users(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    return db.query(User).all()
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(
@@ -156,3 +192,4 @@ def get_user_with_projects(
         )
 
     return user
+

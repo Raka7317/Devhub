@@ -39,3 +39,9 @@ class User(Base):
         "Project",
         back_populates="user"
     )
+
+    role: Mapped[str] = mapped_column(
+    String(20),
+    nullable=False,
+    default="user"
+)
