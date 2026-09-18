@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from app.schemas.project import ProjectSimpleResponse
 
 from app.api.deps import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate, UserResponse
-
+from app.schemas.user import (
+    UserCreate,
+    UserUpdate,
+    UserResponse,
+    UserWithProjectsResponse
+)
 
 router = APIRouter(
     prefix="/users",
@@ -85,6 +90,27 @@ def update_user(
     return user
 
 
+
+@router.get("/{user_id}/projects" ,
+    response_model=list[ProjectSimpleResponse])
+def get_user_projects(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    return user.projects
+
+
+
 @router.delete("/{user_id}")
 def delete_user(
     user_id: int,
@@ -104,3 +130,25 @@ def delete_user(
     return {
         "message": "User deleted successfully"
     }
+
+
+
+@router.get(
+    "/{user_id}/details",
+    response_model=UserWithProjectsResponse
+)
+def get_user_with_projects(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    return user
