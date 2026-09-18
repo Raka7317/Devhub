@@ -1,17 +1,22 @@
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
-from app.models.user import User
+
 from app.schemas.project import ProjectCreate
 
+from app.repositories import (
+    project_repository,
+    user_repository
+)
 
 def create_project(
     db: Session,
     project_data: ProjectCreate
 ):
-    user = db.query(User).filter(
-        User.id == project_data.user_id
-    ).first()
+    user = user_repository.get_by_id(
+    db,
+    project_data.user_id
+)
 
     if user is None:
         return None
@@ -23,11 +28,10 @@ def create_project(
     )
 
     try:
-        db.add(new_project)
-        db.commit()
-        db.refresh(new_project)
-
-        return new_project
+        return project_repository.create(
+            db,
+            new_project
+        )
 
     except Exception:
         db.rollback()
@@ -42,34 +46,24 @@ def get_projects(
     user_id: int | None = None,
     sort_by: str = "id"
 ):
-    query = db.query(Project)
-
-    if name:
-        query = query.filter(
-            Project.name.ilike(f"%{name}%")
-        )
-
-    if user_id:
-        query = query.filter(
-            Project.user_id == user_id
-        )
-
-    if sort_by == "name":
-        query = query.order_by(Project.name)
-
-    elif sort_by == "id":
-        query = query.order_by(Project.id)
-
-    return query.offset(skip).limit(limit).all()
+    return project_repository.get_all(
+        db=db,
+        skip=skip,
+        limit=limit,
+        name=name,
+        user_id=user_id,
+        sort_by=sort_by
+    )
 
 
 def get_project(
     db: Session,
     project_id: int
 ):
-    return db.query(Project).filter(
-        Project.id == project_id
-    ).first()
+    return project_repository.get_by_id(
+        db,
+        project_id
+    )
 
 
 def update_project(
@@ -78,9 +72,10 @@ def update_project(
     name: str,
     description: str
 ):
-    project = db.query(Project).filter(
-        Project.id == project_id
-    ).first()
+    project = project_repository.get_by_id(
+        db,
+        project_id
+    )
 
     if project is None:
         return None
@@ -88,24 +83,27 @@ def update_project(
     project.name = name
     project.description = description
 
-    db.commit()
-    db.refresh(project)
-
-    return project
+    return project_repository.update(
+        db,
+        project
+    )
 
 
 def delete_project(
     db: Session,
     project_id: int
 ):
-    project = db.query(Project).filter(
-        Project.id == project_id
-    ).first()
+    project = project_repository.get_by_id(
+        db,
+        project_id
+    )
 
     if project is None:
         return False
 
-    db.delete(project)
-    db.commit()
+    project_repository.delete(
+        db,
+        project
+    )
 
     return True

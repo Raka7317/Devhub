@@ -30,6 +30,11 @@ class User(Base):
         nullable=False
     )
 
+    password_hash: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True
+    )
+
     projects = relationship(
         "Project",
         back_populates="user"
