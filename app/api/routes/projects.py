@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-
+from app.api.deps import pagination_params
 from app.api.deps import get_db
 from app.models.project import Project
 from app.models.user import User
@@ -147,3 +147,17 @@ def delete_project(
     return {
         "message": "Project deleted successfully"
     }
+
+@router.get("/paginated")
+def get_paginated_projects(
+    pagination: dict = Depends(pagination_params),
+    db: Session = Depends(get_db)
+):
+    projects = (
+        db.query(Project)
+        .offset(pagination["skip"])
+        .limit(pagination["limit"])
+        .all()
+    )
+
+    return projects

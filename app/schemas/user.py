@@ -55,3 +55,11 @@ class UserWithProjectsResponse(BaseModel):
     age: int
     role: str
     projects: list[ProjectSimpleResponse]
+
+
+class UserSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    email: EmailStr

@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 import jwt
+from fastapi import Query
 
 from app.core.config import settings
 from app.core.security import ALGORITHM
@@ -78,3 +79,20 @@ def require_admin(
         )
 
     return current_user
+
+
+def pagination_params(
+    skip: int = Query(
+        default=0,
+        ge=0
+    ),
+    limit: int = Query(
+        default=10,
+        ge=1,
+        le=100
+    )
+):
+    return {
+        "skip": skip,
+        "limit": limit
+    }

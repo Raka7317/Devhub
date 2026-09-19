@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from app.schemas.project import ProjectSimpleResponse
 from app.core.security import hash_password
 from fastapi import BackgroundTasks
+from app.schemas.user import UserSummaryResponse
+from sqlalchemy import select
 
 
 from app.core.background_tasks import (
@@ -193,3 +195,19 @@ def get_user_with_projects(
 
     return user
 
+@router.get(
+    "/summary",
+    response_model=list[UserSummaryResponse]
+)
+def get_user_summaries(
+    db: Session = Depends(get_db)
+):
+    users = db.execute(
+        select(
+            User.id,
+            User.name,
+            User.email
+        )
+    ).all()
+
+    return users

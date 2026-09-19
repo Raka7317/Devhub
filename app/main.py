@@ -8,6 +8,17 @@ from app.api.routes.auth import router as auth_router
 from app.core.exception_handlers import global_exception_handler
 from app.core.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
+from app.core.performance_middleware import performance_middleware
+from fastapi.staticfiles import StaticFiles
+from app.api.routes.websocket import router as websocket_router
+from app.api.routes.streaming import router as streaming_router
+from app.api.routes.health import router as health_router
+from app.api.v1.users import router as users_v1_router
+from app.api.v2.users import router as users_v2_router
+
+
+
+from contextlib import asynccontextmanager
 from slowapi import _rate_limit_exceeded_handler
 from app.api.routes.uploads import router as uploads_router
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -21,12 +32,31 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🚀 DevHub API is starting...")
+
+    # Startup logic goes here
+
+    yield
+
+    # Shutdown logic goes here
+    print("🛑 DevHub API is shutting down...")
+
+
 
 app = FastAPI(
     title="DevHub API",
     description="Developer platform API built with FastAPI",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static"
+)
+app.include_router(websocket_router)
 
 app.state.limiter = limiter
 
@@ -50,6 +80,20 @@ app.add_middleware(SecurityHeadersMiddleware)
 async def limit_request_size(request: Request, call_next):
     return await request_size_middleware(request, call_next)
 
+
+@app.middleware("http")
+async def add_process_time(
+    request: Request,
+    call_next
+):
+    return await performance_middleware(
+        request,
+        call_next
+    )
+
+
+
+
 @app.get("/")
 def home():
     return {
@@ -57,7 +101,13 @@ def home():
     }
 
 
+
+
 app.include_router(users_router)
 app.include_router(projects_router)
 app.include_router(auth_router)
 app.include_router(uploads_router)
+app.include_router(streaming_router)
+app.include_router(health_router)
+app.include_router(users_v1_router)
+app.include_router(users_v2_router)
